@@ -1,7 +1,8 @@
 # -- Import -- #
+from __future__ import print_function  # Python 2.6+ or 3.0+
+import pygame
 import argparse
 import csv
-import pygame
 import tqdm
 import os
 import sys
@@ -10,13 +11,39 @@ import time
 
 
 # -- Classes -- #
-class sound_byte(object):
+class sound_clip(object):
     def __init__(self):
         self.path = None
         self.label = None
         self.key = None
+        self.type = ''
+        self.sound_obj = None
 
     def play_clip(self):
+        if self.type == 'pygame':
+            self.sound_obj.play()
+
+    def stop_clip(self):
+        pass
+
+    def wait_for_clip(self):
+        pass
+
+    def clip_is_playing(self):
+        if self.type == 'pygame':
+            return pygame.mixer.get_busy()
+        pass
+
+class settings(object):
+    """ Stores the options to/from a file or from the cli """
+    def __init__(self):
+        self.gui = False
+        self.web = False
+
+    def save_settings(self):
+        pass
+
+    def load_settings(self):
         pass
 # -- End Classes -- #
 
@@ -28,34 +55,37 @@ def get_args():
 def import_setting_from_file():
     pass
 
-def save_settings_to_file(settings):
-    if not settings:
-        pass
-    pass
+def init_gui():
+    # - Init PyGame
+    pygame.init()
+    pygame.display.set_mode([300, 200]) # must include a visible display to play audio :-(
+    # pygame.display.iconify() # but you can minimize it...
+    pygame.mixer.pre_init()
+    pygame.mixer.init()
+    return
 
 def stop_all_clips():
     pass
+
+
 # -- End Functions -- #
 
 
 # -- Main -- #
 def main():
+    settings = get_args()
 
-    # - Init PyGame
-    pygame.init()
-    pygame.display.set_mode([300, 200])
-    # pygame.display.iconify()
-    pygame.mixer.pre_init()
-    pygame.mixer.init()
-    clock = pygame.time.Clock()
+    init_gui()
 
-    test = pygame.mixer.Sound(os.path.join(os.getcwd(), "audio", "badumtss1.ogg"))
-    test.play()
-    clock.tick(10)
+    test = sound_clip()
+    test.path = os.path.join(os.getcwd(), "audio", "badumtss1.ogg")
+    test.type = 'pygame'
+    test.sound_obj = pygame.mixer.Sound(test.path)
+    test.play_clip()
 
-    while pygame.mixer.get_busy():
-        pygame.event.poll()
-        clock.tick(10)
+
+    while test.clip_is_playing():
+        time.sleep(1)
 
     # - Get settings from file (if present, else generate dummy and exit)
 
