@@ -57,11 +57,11 @@ def main():
         pygame.event.poll()
         clock.tick(10)
 
-    # - Get Settings from File (if present, else generate dummy and exit)
+    # - Get settings from file (if present, else generate dummy and exit)
 
     # - Check that the files listed exist and warn if missing
 
-    # - if option to keep all files in memory is set, load them
+    # - If option to keep all files in memory is set, load them
 
     # - Wait for input
     # - On input, play selected sound until it ends or stop is called
