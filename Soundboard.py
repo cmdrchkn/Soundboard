@@ -13,6 +13,7 @@ import configparser
 if sys.version[0] == "3":
     raw_input = input
 
+
 # -- End Import -- #
 
 
@@ -129,13 +130,13 @@ class SoundLibrary(object):
                 this_clip.path = row[2]
                 if not os.path.isabs(this_clip.path):
                     this_clip.path = os.path.join(self.root, this_clip.path)
-            except:
+            except:  #!TODO: actual exception handling might be nice...
                 print('Failed to read a row in the library: line #', _i, ' was [', row, ']', sep='')
 
             if this_clip.label == 'clip_label':
                 continue
 
-            if not this_clip.key in self.sounds:
+            if this_clip.key not in self.sounds:
                 this_clip.import_from_file()
                 self.sounds[this_clip.key] = this_clip
             else:
@@ -151,9 +152,9 @@ class SoundLibrary(object):
         config_file_path = os.path.join(self.root, 'soundboard_settings.cfg')
         config = configparser.ConfigParser()
         config['Settings'] = {
-            'gui': str(self.gui),
-            'web': str(self.web),
-            'type': str(self.type),
+            'gui':         str(self.gui),
+            'web':         str(self.web),
+            'type':        str(self.type),
             'keep_in_mem': str(self.keep_in_mem),
         }
 
@@ -170,9 +171,9 @@ class SoundLibrary(object):
 
         config = configparser.ConfigParser()
         config["DEFAULT"] = {
-            'gui': "False",
-            'web': "False",
-            'type': "simpleaudio",
+            'gui':         "False",
+            'web':         "False",
+            'type':        "simpleaudio",
             'keep_in_mem': "False",
         }
         config.read(settings_file_path)
