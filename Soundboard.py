@@ -1,13 +1,15 @@
 # -- Import -- #
 from __future__ import print_function  # Python 2.6+ or 3.0+
+
+import configparser
+import csv
+import os
 import sys
+import time
+import itertools
 import pygame
 import simpleaudio
-import csv
 import tqdm
-import os
-import time
-import configparser
 
 # Deal with py Version skew
 if sys.version[0] == "3":
@@ -25,6 +27,7 @@ class SoundLibrary(object):
 
     def __init__(self):
         self.sounds = {}
+        self.playing = []
         self.type = 'simpleaudio'
         self.gui = False
         self.web = False
@@ -37,58 +40,92 @@ class SoundLibrary(object):
         self.import_library_from_file()
 
     def display_choices(self):
-        prompt_text = ""
+        items_per_row = 3
+
+        # Determine what to display
+        prompt_text = []
         for key in sorted(self.sounds.keys()):
             clip = self.sounds[key]
-            prompt_text += key + ': ' + clip.label + '\n'
+            prompt_text.append(key + ': ' + clip.label)
+
+        # Clear the screen
         cls()
-        print(prompt_text)
+
+        # Print Now Playing info
+        stale = []
+        for clip in self.playing:
+            if clip.clip_is_playing():
+                print('Playing:', clip.label)
+            else:
+                stale.append(clip)
+
+        # Purge the old notices from the list
+        for stale_clip in stale:
+            self.playing.remove(stale_clip)
+
+        # Figure out how to fit stuff on the screen
+        screen_text_lines = get_rows_by_slice(prompt_text, items_per_row)
+        # !TODO: Paginate?
+
+        # Do the actual displaying
+        for _ in range(0, 119):
+            print('-', end='')
+        print()
+        for row in screen_text_lines:
+            format_string = '|{:<38}'
+            for _ in row[1:]:
+                format_string += '|{:<38}'
+
+            print(format_string.format(*row))
+
         return
 
-    def process_choice(self, choice):
+    def process_choice(self, choice, wait=False):
+        # Play clips back to back
+        if ',' in choice:
+            for _ in choice.split(','):
+                self.process_choice(_, wait=True)
+            return True
+
+        # Play multiple clips (almost) simultaneously
+        if '+' in choice:
+            for _ in choice.split('+'):
+                self.process_choice(_)
+            return True
+
         if choice.lower() in ['q', 'exit']:
             print('Quiting...')
             return False
 
+        if choice.lower() in ['!', 'stop', 'shut the fuck up', 'shut up']:
+            print('Stopping all sounds...')
+            self.stop_all_sounds()
+
         elif choice in self.sounds:
-            print('Playing:', self.sounds[choice].label)
-            print('DEBUG',
-                  'Pre',
-                  self.sounds[choice].label,
-                  self.sounds[choice].key,
-                  self.sounds[choice].type,
-                  self.sounds[choice].path,
-                  self.sounds[choice].sound_obj,
-                  self.sounds[choice].play_obj,
-                  sep="|"
-                  )
+            # print('Playing:', self.sounds[choice].label)
+
+            # Play the selection
             self.sounds[choice].play_clip()
-            print('DEBUG',
-                  'Post',
-                  self.sounds[choice].label,
-                  self.sounds[choice].key,
-                  self.sounds[choice].type,
-                  self.sounds[choice].path,
-                  self.sounds[choice].sound_obj,
-                  self.sounds[choice].play_obj,
-                  sep="|"
-                  )
-            self.sounds[choice].wait_for_clip()
-            print('DEBUG',
-                  'After',
-                  self.sounds[choice].label,
-                  self.sounds[choice].key,
-                  self.sounds[choice].type,
-                  self.sounds[choice].path,
-                  self.sounds[choice].sound_obj,
-                  self.sounds[choice].play_obj,
-                  sep="|"
-                  )
+
+            # Note that we're playing it in case we need to stop it explicitly
+            self.playing.append(self.sounds[choice])
+
+            # Block until the clip is done playing
+            if wait:
+                self.sounds[choice].wait_for_clip()
 
         else:
             print('Unknown Command')
 
+        #time.sleep(0.5)
         return True
+
+    def stop_all_sounds(self):
+        if self.type == 'pygame':
+            pygame.mixer.stop()
+        elif self.type == 'simpleaudio':
+            simpleaudio.stop_all()
+        return
 
     def save_library_to_file(self):
         library_file_path = os.path.join(self.root, 'soundboard_library.csv')
@@ -118,7 +155,7 @@ class SoundLibrary(object):
         library_file = csv.reader(open(library_file_path, 'r'))
 
         for _i, row in enumerate(library_file):
-            print('DEBUG', row)
+            # print('DEBUG', row)
             this_clip = SoundClip(self.type)
 
             if len(row) == 0 or row[0] == '':
@@ -130,7 +167,7 @@ class SoundLibrary(object):
                 this_clip.path = row[2]
                 if not os.path.isabs(this_clip.path):
                     this_clip.path = os.path.join(self.root, this_clip.path)
-            except:  #!TODO: actual exception handling might be nice...
+            except:  # !TODO: actual exception handling might be nice...
                 print('Failed to read a row in the library: line #', _i, ' was [', row, ']', sep='')
 
             if this_clip.label == 'clip_label':
@@ -276,9 +313,15 @@ def cls():
     Ugly but function method for clearing the screen on both Linux and Windows
     http://stackoverflow.com/a/684344
     """
-    # os.system('cls' if os.name == 'nt' else 'clear')
+    os.system('cls' if os.name == 'nt' else 'clear')
     print()
     return
+
+
+def get_rows_by_slice(seq, row_length):
+    # http://stackoverflow.com/a/3744524
+    for start in range(0, len(seq), row_length):
+        yield seq[start:start+row_length]
 
 
 # -- End Functions -- #
